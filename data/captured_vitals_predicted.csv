@@ -1,0 +1,5 @@
+Age,Systolic_BP,Diastolic,BS,Body_Temp,BMI,Previous_Complications,Preexisting_Diabetes,Gestational_Diabetes,Mental_Health,Heart_Rate,prediction,prediction_label,captured_at,source,state,pred_prob_new,pred_new,pred_label_new
+27,120.0,80.0,100.0,98.6,22.0,1,1,1,1,100.0,1,High Risk,2026-05-04T18:21:52.085337,android_app,,0.99976367,1,High Risk
+23,180.0,90.0,100.0,98.6,22.0,1,1,1,1,100.0,1,High Risk,2026-05-04T18:58:19.511926,android_app,,0.99991465,1,High Risk
+24,120.0,80.0,100.0,98.6,22.0,1,1,1,1,,1,High Risk,2026-05-04T19:27:10.639621,android_app,Delhi,0.9998567,1,High Risk
+24,120.0,80.0,100.0,98.6,22.0,1,1,1,1,,1,High Risk,2026-05-04T19:27:11.701657,android_app,,0.9998567,1,High Risk
