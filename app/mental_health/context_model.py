@@ -87,11 +87,35 @@ def predict_context_risk(context: Dict, age: float) -> dict:
     ))
     top_factors = sorted(importances.items(), key=lambda x: -x[1])[:5]
     factors_list = [f for f, _ in top_factors]
-    factors_summary = ", ".join(factors_list[:3])
+
+    # Map raw feature column names to plain language for ASHA workers
+    factor_labels = {
+        "Relationship with Mother in-law": "Family relationship with in-laws",
+        "Sufficient Money for Basic Needs": "Money for basic needs",
+        "Male Gender Preference": "Pressure for boy child",
+        "Previous Miscarriage": "Past pregnancy loss",
+        "Current Appereance Acceptance": "Body changes acceptance",
+        "Physical Health ": "General physical health",
+        "Female Education": "Mother's education",
+        "Husband Education": "Husband's education",
+        "Working Status": "Employment status",
+        "Family System": "Family living setup",
+        "Gravida": "Number of pregnancies",
+        "Gestational Age": "Weeks of pregnancy",
+        "Number of sons ": "Number of sons",
+        "Number of daughters": "Number of daughters",
+        "Total Number of Children": "Total number of children",
+        "Age": "Mother's age",
+    }
+    clean_summary_items = []
+    for f in factors_list[:3]:
+        base = f.split("_")[0].strip()
+        clean_summary_items.append(factor_labels.get(f, factor_labels.get(base, f)))
+    factors_summary = ", ".join(clean_summary_items)
+
     explanation = (
-        f"Factors associated with this assessment include: {factors_summary}. "
-        "These factors contributed to the model's statistical risk assessment as model-derived associations "
-        "and do not indicate direct medical causation."
+        f"Key life factors checked: {factors_summary}. "
+        "These factors give helpful background clues for the ASHA worker, but are not a medical diagnosis."
     )
 
     from datetime import datetime

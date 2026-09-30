@@ -52,9 +52,9 @@ def score_phq9(item_scores: Dict[str, int]) -> dict:
     urgent = item_scores["phq_suicidal_ideation"] > 0
     at_risk = total >= PHQ9_AT_RISK_CUTOFF
     safety_msg = (
-        "URGENT: Patient endorsed thoughts of self-harm or suicidal ideation (Item 9 > 0). "
-        "Requires immediate clinical escalation and psychiatric evaluation. Do not leave patient unattended."
-        if urgent else "No acute self-harm risk reported on screening."
+        "URGENT: Mother is having dark thoughts or feeling hopeless (Question 9 answered yes). "
+        "Do NOT leave the mother alone. Keep a family member with her and take her to the clinic or doctor today."
+        if urgent else "No acute safety concern reported on screening."
     )
 
     return {

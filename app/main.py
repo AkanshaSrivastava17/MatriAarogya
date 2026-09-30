@@ -100,71 +100,81 @@ def explain_physical_vitals_risk(item: PatientParams, pred: int, label: str):
     gest_diab = item.Gestational_Diabetes or 0
     mh = item.Mental_Health or 0
 
-    # 1. Contributing Biomarker & Obstetric Factors
-    if sbp >= 140 or dbp >= 90:
-        factors.append(f"High Blood Pressure ({int(sbp)}/{int(dbp)} mmHg) - Stage 2 Hypertension / Pre-eclampsia Risk")
+    # 1. Contributing Biomarker & Obstetric Factors (Simple Language for ASHA Workers)
+    if sbp >= 160 or dbp >= 110:
+        factors.append(f"Dangerously High Blood Pressure ({int(sbp)}/{int(dbp)} mmHg) - Risk of swelling and fits")
+    elif sbp >= 140 or dbp >= 90:
+        factors.append(f"High Blood Pressure ({int(sbp)}/{int(dbp)} mmHg) - Needs regular monitoring")
     elif sbp >= 130 or dbp >= 85:
-        factors.append(f"Elevated Blood Pressure ({int(sbp)}/{int(dbp)} mmHg) - Pre-hypertensive")
+        factors.append(f"Slightly Elevated Blood Pressure ({int(sbp)}/{int(dbp)} mmHg)")
 
-    if bs >= 7.8:
-        factors.append(f"Elevated Blood Glucose ({bs:.1f} mmol/L) - Gestational Hyperglycemia")
+    if bs >= 11.1:
+        factors.append(f"Very High Blood Sugar ({bs:.1f} mmol/L)")
+    elif bs >= 7.8:
+        factors.append(f"High Blood Sugar ({bs:.1f} mmol/L)")
     elif bs < 3.5:
-        factors.append(f"Low Blood Glucose ({bs:.1f} mmol/L) - Hypoglycemia Risk")
+        factors.append(f"Low Blood Sugar ({bs:.1f} mmol/L) - Feeling weak or dizzy")
 
     if prev_comp > 0:
-        factors.append("History of Prior Pregnancy Complications / High-Risk Obstetric History")
+        factors.append("Trouble in Past Pregnancy (History of past delivery complications)")
 
     if pre_diab > 0 or gest_diab > 0:
-        factors.append("Documented Pre-existing or Gestational Diabetes")
+        factors.append("Sugar / Diabetes Problem during pregnancy")
 
     if bmi >= 30.0:
-        factors.append(f"Elevated BMI ({bmi:.1f}) - Maternal Obesity (Thromboembolism & Macrosomia risk)")
+        factors.append(f"Mother is Overweight (High weight: BMI {bmi:.1f})")
     elif bmi < 18.5:
-        factors.append(f"Low BMI ({bmi:.1f}) - Underweight (Intrauterine Growth Restriction risk)")
+        factors.append(f"Mother is Underweight (Low weight: BMI {bmi:.1f})")
 
     if hr > 100:
-        factors.append(f"Elevated Heart Rate ({int(hr)} bpm) - Maternal Tachycardia")
+        factors.append(f"Fast Heart Rate ({int(hr)} bpm)")
     elif hr < 60:
-        factors.append(f"Low Heart Rate ({int(hr)} bpm) - Bradycardia")
+        factors.append(f"Slow Heart Rate ({int(hr)} bpm)")
 
     if age > 35:
-        factors.append(f"Advanced Maternal Age ({age} years)")
+        factors.append(f"Mother's Age ({age} years) - Needs extra care")
     elif age < 18:
-        factors.append(f"Adolescent Pregnancy ({age} years)")
+        factors.append(f"Very Young Mother ({age} years) - Needs extra care")
 
     if mh > 0:
-        factors.append("Co-occurring Maternal Psychological / Emotional Distress")
+        factors.append("Feeling Very Sad, Worried, or Anxious")
 
     if not factors:
-        factors.append("All primary vitals within standard clinical baseline ranges")
+        factors.append("All measured vitals look healthy and normal")
 
-    # 2. Protocolized Actionable Guidance for ASHA Workers
-    if pred == 1 or sbp >= 140 or dbp >= 90:
-        actions.append("🚨 Check urine for albumin/protein immediately at Sub-Centre/PHC to screen for Pre-eclampsia.")
-        actions.append("🚨 Arrange prompt referral to Medical Officer at PHC/CHC within 24 hours.")
-        actions.append("• Advise patient on left-lateral resting position and low-sodium diet; recheck BP within 24 hours.")
-        actions.append("• Ensure family is pre-registered with 108/102 Emergency Ambulance for institutional delivery.")
+    # 2. Simple Actionable Steps for Frontline ASHA Workers
+    if sbp >= 160 or dbp >= 110:
+        actions.append("🚨 Check urine for protein at the clinic today to check for swelling and fits risk.")
+        actions.append("🚨 Take mother to the hospital / PHC doctor within 24 hours without delay.")
+        actions.append("• Ask mother to sleep on her left side and use less salt in food.")
+        actions.append("• Save 108 ambulance number on the family phone for quick hospital transport.")
+    elif pred == 1 or sbp >= 140 or dbp >= 90:
+        actions.append("⚠️ Re-check BP in 2 days. Tell mother to alert you if she has severe headache, blurred vision, or upper stomach pain.")
+        actions.append("• Bring mother to the doctor on the 9th of the month (PMSMA checkup day).")
+        actions.append("• Ask mother to sleep on her left side, use less salt, and rest well.")
 
-    if bs >= 7.8 or pre_diab > 0 or gest_diab > 0:
-        actions.append("• Schedule Fasting & Postprandial Oral Glucose Tolerance Test (OGTT) at the PHC lab.")
-        actions.append("• Provide dietary counseling: avoid simple refined sugars, increase dietary fiber and green leafy vegetables.")
+    if bs >= 11.1:
+        actions.append("🚨 Urgent: Take mother to the PHC / hospital doctor for sugar medicine and tests.")
+    elif bs >= 7.8 or pre_diab > 0 or gest_diab > 0:
+        actions.append("• Take mother to the PHC lab in the morning without breakfast for a sugar test (OGTT).")
+        actions.append("• Tell mother to stop sweets and sugar in tea. Eat more green vegetables, dal, and roti.")
 
     if bmi < 18.5:
-        actions.append("• Enroll mother immediately in Anganwadi Supplementary Nutrition Programme (take-home ration).")
-        actions.append("• Verify daily adherence to double-dose Iron Folic Acid (IFA) and Calcium supplementation.")
+        actions.append("• Register mother for extra Anganwadi ration (take-home food / poshahar).")
+        actions.append("• Make sure she takes her red iron tablet (IFA) and calcium tablet daily.")
     elif bmi >= 30.0:
-        actions.append("• Monitor gestational weight gain carefully; advise 30 minutes of gentle daily walking.")
+        actions.append("• Track mother's weight every month. Encourage a gentle 30-minute daily walk.")
 
     if prev_comp > 0:
-        actions.append("• Formulate High-Risk Pregnancy (HRP) Birth Preparedness Plan: Mandate delivery at First Referral Unit (FRU) / District Hospital.")
+        actions.append("• Mark as High-Risk Pregnancy. Plan delivery at the District Hospital or CHC (not at home).")
 
     if mh > 0:
-        actions.append("• Screen for perinatal mood changes using PHQ-9 and offer supportive counseling.")
+        actions.append("• Talk kindly with the mother. Use the 9-question mental health screen to check how she is feeling.")
 
     if pred == 0 and len(actions) == 0:
-        actions.append("• Continue routine Antenatal Care (ANC) visits (ensure minimum 4 mandatory ANC checkups).")
-        actions.append("• Ensure daily compliance with Iron Folic Acid (IFA) and Calcium tablets after first trimester.")
-        actions.append("• Educate family on danger signs: severe headache, blurry vision, epigastric pain, or reduced fetal movement.")
+        actions.append("✓ Continue regular monthly checkups (ensure at least 4 clinic visits before delivery).")
+        actions.append("✓ Ensure mother takes 1 red iron tablet (IFA) and 1 calcium tablet daily after meals.")
+        actions.append("✓ Teach family the danger signs: bleeding, severe headache, blurred vision, or baby moving less.")
 
     return factors, actions
 

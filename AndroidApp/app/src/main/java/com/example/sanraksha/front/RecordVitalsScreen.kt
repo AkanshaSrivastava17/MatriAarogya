@@ -556,7 +556,7 @@ fun RecordVitalsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "Diagnosed Status: $dialogRiskLabel",
+                            text = "Risk Level: $dialogRiskLabel",
                             modifier = Modifier.padding(10.dp),
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 15.sp,
@@ -567,7 +567,7 @@ fun RecordVitalsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = "Major Contributing Factors:",
+                        text = "Main Reasons / Contributing Factors:",
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurface
@@ -575,7 +575,7 @@ fun RecordVitalsScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     if (dialogFactors.isEmpty()) {
                         Text(
-                            text = "• All recorded vitals within standard clinical thresholds.",
+                            text = "• All recorded vitals look normal and healthy.",
                             fontSize = 13.sp,
                             color = Color(0xFF455A64)
                         )

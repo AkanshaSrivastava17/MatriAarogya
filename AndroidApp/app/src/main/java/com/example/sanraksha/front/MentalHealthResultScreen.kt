@@ -107,7 +107,7 @@ fun MentalHealthResultScreen(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "CRITICAL SAFETY ALERT",
+                                text = "URGENT SAFETY ALERT",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color(0xFFC62828)
@@ -116,9 +116,8 @@ fun MentalHealthResultScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = res.urgentMessage
-                                ?: "Patient indicated thoughts of self-harm or suicide (PHQ-9 Item 9 > 0). " +
-                                  "Immediate clinical evaluation and crisis intervention required. " +
-                                  "Do not leave the mother unattended. Initiate referral protocol.",
+                                ?: "Mother is having dark thoughts or feeling hopeless (Question 9 answered yes). " +
+                                  "Do NOT leave the mother alone. Keep a family member with her and take her to the clinic or doctor today.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFFB71C1C),
                             fontWeight = FontWeight.SemiBold
@@ -129,7 +128,7 @@ fun MentalHealthResultScreen(
                             color = Color(0xFFFFCDD2)
                         ) {
                             Text(
-                                text = "National Tele-MANAS Helpline: 14416 / 1800-891-4416",
+                                text = "Free Tele-MANAS Helpline: 14416 / 1800-891-4416 (Call 24/7)",
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
@@ -150,7 +149,7 @@ fun MentalHealthResultScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Current Mental Health Screening (PHQ-9)",
+                        text = "Mental Health Checkup (9 Questions)",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -162,7 +161,7 @@ fun MentalHealthResultScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("PHQ-9 Score", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            Text("Total Score", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                             Text(
                                 text = "${res.currentScreening.phq9Score} / 27",
                                 style = MaterialTheme.typography.headlineMedium,
@@ -171,7 +170,7 @@ fun MentalHealthResultScreen(
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Severity Band", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            Text("Mood Level", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
                                 color = when (res.currentScreening.severity) {
@@ -181,8 +180,15 @@ fun MentalHealthResultScreen(
                                     else -> Color(0xFFE8F5E9)
                                 }
                             ) {
+                                val moodLabel = when (res.currentScreening.severity) {
+                                    "Severe" -> "Severe Worry / Sadness"
+                                    "Moderately Severe" -> "High Worry / Sadness"
+                                    "Moderate" -> "Moderate Worry / Sadness"
+                                    "Mild" -> "Mild Worry / Sadness"
+                                    else -> "Normal / Doing Well"
+                                }
                                 Text(
-                                    text = res.currentScreening.severity,
+                                    text = moodLabel,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                     fontWeight = FontWeight.Bold,
                                     color = Color.Black
@@ -199,9 +205,9 @@ fun MentalHealthResultScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Screening Status:", fontWeight = FontWeight.SemiBold)
+                        Text("Screening Result:", fontWeight = FontWeight.SemiBold)
                         Text(
-                            text = if (res.currentScreening.screenPositive) "Positive (>=10 Cutoff)" else "Negative (<10)",
+                            text = if (res.currentScreening.screenPositive) "Needs Medical Care (Score 10 or more)" else "Normal / Low Worry (Score below 10)",
                             fontWeight = FontWeight.Bold,
                             color = if (res.currentScreening.screenPositive) Color(0xFFC62828) else Color(0xFF2E7D32)
                         )
@@ -221,7 +227,7 @@ fun MentalHealthResultScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Contextual Vulnerability Risk (ML)",
+                            text = "Life & Family Risk Factors",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.secondary
@@ -233,7 +239,7 @@ fun MentalHealthResultScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text("Risk Probability", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                Text("Risk Chance", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                 Text(
                                     text = "${(ctx.probability * 100).toInt()}%",
                                     style = MaterialTheme.typography.headlineMedium,
@@ -246,7 +252,7 @@ fun MentalHealthResultScreen(
                                 )
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text("Risk Category", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                Text("Risk Level", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                 Surface(
                                     shape = RoundedCornerShape(16.dp),
                                     color = when (ctx.category) {
@@ -255,8 +261,13 @@ fun MentalHealthResultScreen(
                                         else -> Color(0xFFE8F5E9)
                                     }
                                 ) {
+                                    val catLabel = when (ctx.category) {
+                                        "Elevated" -> "High Risk"
+                                        "Moderate" -> "Medium Risk"
+                                        else -> "Low Risk"
+                                    }
                                     Text(
-                                        text = ctx.category,
+                                        text = catLabel,
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                         fontWeight = FontWeight.Bold,
                                         color = Color.Black
@@ -288,7 +299,7 @@ fun MentalHealthResultScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Longitudinal Monitoring",
+                        text = "Visit-to-Visit Mood Tracking",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF37474F)
@@ -296,18 +307,18 @@ fun MentalHealthResultScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Visit Sequence:", color = Color.Gray)
+                        Text("Visit Number:", color = Color.Gray)
                         Text("Visit #${long.visitCount}", fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Score Change from Prior:", color = Color.Gray)
+                        Text("Change Since Last Visit:", color = Color.Gray)
                         Text(
                             text = when {
-                                long.phq9Change == null -> "Baseline (First Visit)"
-                                long.phq9Change > 0 -> "+${long.phq9Change} pts (Worsening)"
-                                long.phq9Change < 0 -> "${long.phq9Change} pts (Improving)"
-                                else -> "0 pts (Unchanged)"
+                                long.phq9Change == null -> "First Checkup (Baseline)"
+                                long.phq9Change > 0 -> "+${long.phq9Change} pts (Mood Worsened)"
+                                long.phq9Change < 0 -> "${long.phq9Change} pts (Mood Improved)"
+                                else -> "0 pts (Same as last visit)"
                             },
                             fontWeight = FontWeight.Bold,
                             color = when {
@@ -319,20 +330,20 @@ fun MentalHealthResultScreen(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Trajectory Trend:", color = Color.Gray)
+                        Text("Mood Direction:", color = Color.Gray)
                         Text(
                             text = when (long.trend) {
-                                "increasing" -> "Increasing ↗"
-                                "decreasing" -> "Decreasing ↘"
+                                "increasing" -> "Getting Worse ↗"
+                                "decreasing" -> "Getting Better ↘"
                                 "stable" -> "Stable →"
-                                else -> "Insufficient Data"
+                                else -> "First Assessment"
                             },
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Prior Elevated Screenings:", color = Color.Gray)
+                        Text("Times High Score in Past:", color = Color.Gray)
                         Text("${long.previousElevatedScreenings}", fontWeight = FontWeight.Bold)
                     }
                 }
@@ -367,7 +378,7 @@ fun MentalHealthResultScreen(
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Recommended community actions based on current clinical severity and trajectory:",
+                            text = "Simple, step-by-step actions to help the mother right now:",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF33691E)
                         )
@@ -435,7 +446,7 @@ fun MentalHealthResultScreen(
                     Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF546E7A))
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Scientific Note: Validated prospective postpartum prediction is not claimed as models are derived from cross-sectional data. This system provides screening and trajectory decision support.",
+                        text = "Note for ASHA Worker: This tool helps you screen mood and track changes over time. Always take the mother to the doctor or PHC for medical checkup and diagnosis.",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF37474F)
                     )
