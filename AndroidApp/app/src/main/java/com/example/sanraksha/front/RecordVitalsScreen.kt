@@ -49,6 +49,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.Alignment
@@ -132,6 +133,7 @@ fun RecordVitalsScreen(
     var dialogIsHighRisk by remember { mutableStateOf(false) }
     var dialogFactors by remember { mutableStateOf<List<String>>(emptyList()) }
     var dialogActions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isSubmitting by remember { mutableStateOf(false) }
 
 
     val calendar = Calendar.getInstance()
@@ -326,13 +328,92 @@ fun RecordVitalsScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            val onDevicePredict: () -> Unit = {
+                val finalDate = if (date.isNotBlank()) date else SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Calendar.getInstance().time)
+                val input = riskInput(
+                    Age = age.toFloatOrNull()?.toInt() ?: 0,
+                    Systolic_BP = systolicBP.toFloatOrNull()?.toInt() ?: 0,
+                    Diastolic = diastolic.toFloatOrNull()?.toInt() ?: 0,
+                    BS = bs.toFloatOrNull() ?: 0f,
+                    Body_Temp = bodyTemp.toFloatOrNull() ?: 0f,
+                    BMI = bmi.toFloatOrNull() ?: 0f,
+                    Previous_Complications = previousComplications ?: 0,
+                    Preexisting_Diabetes = preexistingDiabetes ?: 0,
+                    Gestational_Diabetes = gestationalDiabetes ?: 0,
+                    Mental_Health = mentalHealth ?: 0,
+                    Heart_Rate = heartRate.toFloatOrNull()?.toInt() ?: 0
+                )
+                val inputforMlModel = ImprovedDataStandardization(input)
+                Log.d("PRED_DEBUG", "TFLite input vector: ${inputforMlModel.joinToString()}")
+                val predictor = RiskPredictor(context)
+                val prediction = try {
+                    predictor.predict(inputforMlModel)
+                } catch (e: Exception) {
+                    Log.e("PRED_DEBUG", "TFLite prediction failed", e)
+                    Float.NaN
+                }
+                val intPrediction = if (prediction > 0.5f) 1 else 0
+
+                val vitals = Vitals(
+                    patientId = patientId,
+                    date = finalDate,
+                    Age = age.toIntOrNull() ?: 0,
+                    Systolic_BP = systolicBP.toFloatOrNull() ?: 0f,
+                    Diastolic = diastolic.toFloatOrNull() ?: 0f,
+                    BS = bs.toFloatOrNull() ?: 0f,
+                    Body_Temp = bodyTemp.toFloatOrNull() ?: 0f,
+                    BMI = bmi.toFloatOrNull() ?: 0f,
+                    Heart_Rate = heartRate.toFloatOrNull() ?: 0f,
+                    Previous_Complications = previousComplications ?: 0,
+                    Preexisting_Diabetes = preexistingDiabetes ?: 0,
+                    Gestational_Diabetes = gestationalDiabetes ?: 0,
+                    Mental_Health = mentalHealth ?: 0,
+                    predictedRisk = intPrediction,
+                    predictedRiskLabel = if (intPrediction == 1) "High Risk" else "Low Risk",
+                )
+
+                vitalsViewModel.insertVitals(vitals)
+
+                val week = getWeek(startDateStr = patient?.lastCheckup ?: "", endDateStr = finalDate)
+                val finalweek = (patient?.pregnancyWeek ?: 0) + week
+
+                patientViewModel.updatePatient(
+                    patient = Patient(
+                        patientId, patient?.name ?: "",
+                        finalweek, finalDate
+                    )
+                )
+
+                val isHigh = intPrediction == 1
+                val (evalFactors, evalActions) = PhysicalVitalsGuidance.evaluateFactorsAndActions(
+                    sys = systolicBP.toFloatOrNull(),
+                    dia = diastolic.toFloatOrNull(),
+                    bs = bs.toFloatOrNull(),
+                    bmi = bmi.toFloatOrNull(),
+                    prevComp = previousComplications ?: 0,
+                    preDiabetes = preexistingDiabetes ?: 0,
+                    gestDiabetes = gestationalDiabetes ?: 0,
+                    mentalHealth = mentalHealth ?: 0,
+                    isHighRisk = isHigh
+                )
+                dialogRiskLabel = if (isHigh) "High Risk" else "Low Risk"
+                dialogIsHighRisk = isHigh
+                dialogFactors = evalFactors
+                dialogActions = evalActions
+                isSubmitting = false
+                showResultDialog = true
+            }
+
             Button(
                 onClick = {
+                    if (isSubmitting) return@Button
+                    isSubmitting = true
                     Log.d("PRED_DEBUG", "Save clicked - isConnected = $isConnected")
+                    val finalDate = if (date.isNotBlank()) date else SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Calendar.getInstance().time)
+
                     if (isConnected) {
-                        //call api
                         val input = healthDataItem(
-                            Age = age.toFloatOrNull()?.toInt()?:0,
+                            Age = age.toFloatOrNull()?.toInt() ?: 0,
                             Systolic_BP = systolicBP.toFloatOrNull(),
                             Diastolic = diastolic.toFloatOrNull(),
                             BS = bs.toFloatOrNull(),
@@ -344,23 +425,22 @@ fun RecordVitalsScreen(
                             Mental_Health = mentalHealth ?: 0,
                             Heart_Rate = heartRate.toFloatOrNull(),
                             state = patient?.state
-
                         )
-                        healthViewModel.sendHealthDataToApi(input){result: ApiPredictionResult?->
-                            if(result != null){
-                                Log.d("APIPrediction","Predicted Risk Score : ${result.prediction}")
-                                Log.d("APIPrediction","Predicted Risk Label : ${result.label}")
+                        healthViewModel.sendHealthDataToApi(input) { result: ApiPredictionResult? ->
+                            if (result != null) {
+                                Log.d("APIPrediction", "Predicted Risk Score : ${result.prediction}")
+                                Log.d("APIPrediction", "Predicted Risk Label : ${result.label}")
                                 Toast.makeText(context, "Predicted Risk: ${result.label}", Toast.LENGTH_SHORT).show()
                                 val vitals = Vitals(
                                     patientId = patientId,
-                                    date = date,
-                                    Age = age.toIntOrNull()?:0,
-                                    Systolic_BP = systolicBP.toFloatOrNull()?:0f,
-                                    Diastolic = diastolic.toFloatOrNull()?:0f,
-                                    BS = bs.toFloatOrNull()?:0f,
-                                    Body_Temp = bodyTemp.toFloatOrNull()?:0f,
+                                    date = finalDate,
+                                    Age = age.toIntOrNull() ?: 0,
+                                    Systolic_BP = systolicBP.toFloatOrNull() ?: 0f,
+                                    Diastolic = diastolic.toFloatOrNull() ?: 0f,
+                                    BS = bs.toFloatOrNull() ?: 0f,
+                                    Body_Temp = bodyTemp.toFloatOrNull() ?: 0f,
                                     BMI = bmi.toFloatOrNull() ?: 0f,
-                                    Heart_Rate = heartRate.toFloatOrNull()?:0f,
+                                    Heart_Rate = heartRate.toFloatOrNull() ?: 0f,
                                     Previous_Complications = previousComplications ?: 0,
                                     Preexisting_Diabetes = preexistingDiabetes ?: 0,
                                     Gestational_Diabetes = gestationalDiabetes ?: 0,
@@ -368,18 +448,17 @@ fun RecordVitalsScreen(
                                     predictedRisk = result.prediction,
                                     predictedRiskLabel = result.label
                                 )
-                                Log.d("InsertVitals", "Calling insert for patientId = ${vitals.patientId}")
-
-                                // 🔍 AND THIS:
-                                Log.d("InsertVitals", "Vitals Object = $vitals")
                                 vitalsViewModel.insertVitals(vitals)
 
-                                val week = getWeek(startDateStr = patient?.lastCheckup?:"", endDateStr = date)
-                                val finalweek = (patient?.pregnancyWeek?:0) + week
+                                val week = getWeek(startDateStr = patient?.lastCheckup ?: "", endDateStr = finalDate)
+                                val finalweek = (patient?.pregnancyWeek ?: 0) + week
 
-                                patientViewModel.updatePatient(patient = Patient(patientId,patient?.name?:"",
-                                    finalweek,date
-                                    ))
+                                patientViewModel.updatePatient(
+                                    patient = Patient(
+                                        patientId, patient?.name ?: "",
+                                        finalweek, finalDate
+                                    )
+                                )
 
                                 val isHigh = result.prediction == 1
                                 val (evalFactors, evalActions) = PhysicalVitalsGuidance.evaluateFactorsAndActions(
@@ -397,97 +476,34 @@ fun RecordVitalsScreen(
                                 dialogIsHighRisk = isHigh
                                 dialogFactors = if (result.contributingFactors.isNotEmpty()) result.contributingFactors else evalFactors
                                 dialogActions = if (result.actionableGuidance.isNotEmpty()) result.actionableGuidance else evalActions
+                                isSubmitting = false
                                 showResultDialog = true
-
-                            }else{
-                               Log.d("APIPrediction","error: ")
-
+                            } else {
+                                Log.w("APIPrediction", "API call failed; executing offline on-device prediction fallback")
+                                onDevicePredict()
                             }
-
                         }
                     } else {
-                        //else ml model
-                        val input = riskInput(
-                            Age = age.toFloatOrNull()?.toInt()?:0,
-                            Systolic_BP = systolicBP.toFloatOrNull()?.toInt()?:0,
-                            Diastolic = diastolic.toFloatOrNull()?.toInt()?:0,
-                            BS = bs.toFloatOrNull()?:0f,
-                            Body_Temp = bodyTemp.toFloatOrNull()?:0f,
-                            BMI = bmi.toFloatOrNull() ?: 0f,
-                            Previous_Complications = previousComplications ?: 0,
-                            Preexisting_Diabetes = preexistingDiabetes ?: 0,
-                            Gestational_Diabetes = gestationalDiabetes ?: 0,
-                            Mental_Health = mentalHealth ?: 0,
-                            Heart_Rate = heartRate.toFloatOrNull()?.toInt()?:0
-                        )
-                        // Use improved model (98.73% accuracy)
-                        val inputforMlModel = ImprovedDataStandardization(input)
-                        Log.d("PRED_DEBUG", "TFLite input vector: ${inputforMlModel.joinToString()}")
-                        val predictor = RiskPredictor(context)
-                        val prediction = try {
-                            predictor.predict(inputforMlModel)
-                        } catch (e: Exception) {
-                            Log.e("PRED_DEBUG", "TFLite prediction failed", e)
-                            Float.NaN
-                        }
-                        val intPrediction = if(prediction > 0.5f)1 else 0
-
-                        Log.d("TFLitePrediction", "Predicted Risk Score : $prediction")
-                        Log.d("TFLitePredictioninINt", "Predicted  Score : $intPrediction")
-                        val vitals = Vitals(
-                            patientId = patientId,
-                            date = date,
-                            Age = age.toIntOrNull()?:0,
-                            Systolic_BP = systolicBP.toFloatOrNull()?:0f,
-                            Diastolic = diastolic.toFloatOrNull()?:0f,
-                            BS = bs.toFloatOrNull()?:0f,
-                            Body_Temp = bodyTemp.toFloatOrNull()?:0f,
-                            BMI = bmi.toFloatOrNull() ?: 0f,
-                            Heart_Rate = heartRate.toFloatOrNull()?:0f,
-                            Previous_Complications = previousComplications ?: 0,
-                            Preexisting_Diabetes = preexistingDiabetes ?: 0,
-                            Gestational_Diabetes = gestationalDiabetes ?: 0,
-                            Mental_Health = mentalHealth ?: 0,
-                            predictedRisk = intPrediction,
-                            predictedRiskLabel = if (intPrediction == 1) "High Risk" else "Low Risk",
-                        )
-
-                        vitalsViewModel.insertVitals(vitals)
-
-                        val week = getWeek(startDateStr = patient?.lastCheckup?:"", endDateStr = date)
-                        val finalweek = (patient?.pregnancyWeek?:0) + week
-
-                        patientViewModel.updatePatient(patient = Patient(patientId,patient?.name?:"",
-                            finalweek,date
-                        ))
-
-                        val isHigh = intPrediction == 1
-                        val (evalFactors, evalActions) = PhysicalVitalsGuidance.evaluateFactorsAndActions(
-                            sys = systolicBP.toFloatOrNull(),
-                            dia = diastolic.toFloatOrNull(),
-                            bs = bs.toFloatOrNull(),
-                            bmi = bmi.toFloatOrNull(),
-                            prevComp = previousComplications ?: 0,
-                            preDiabetes = preexistingDiabetes ?: 0,
-                            gestDiabetes = gestationalDiabetes ?: 0,
-                            mentalHealth = mentalHealth ?: 0,
-                            isHighRisk = isHigh
-                        )
-                        dialogRiskLabel = if (isHigh) "High Risk" else "Low Risk"
-                        dialogIsHighRisk = isHigh
-                        dialogFactors = evalFactors
-                        dialogActions = evalActions
-                        showResultDialog = true
+                        onDevicePredict()
                     }
-
-
                 },
+                enabled = !isSubmitting,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Save & Predict Risk",style = MaterialTheme.typography.labelLarge)
+                if (isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Predicting Risk...", style = MaterialTheme.typography.labelLarge)
+                } else {
+                    Text("Save & Predict Risk", style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
     }
