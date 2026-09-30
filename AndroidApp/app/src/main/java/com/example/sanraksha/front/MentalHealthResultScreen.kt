@@ -340,7 +340,92 @@ fun MentalHealthResultScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // ── SECTION 5: SCIENTIFIC TRANSPARENCY DISCLAIMER ─────────────────────────
+            // ── SECTION 5: ACTIONABLE GUIDANCE FOR ASHA WORKER ─────────────────────────
+            val guidanceList = res.actionableGuidance
+            if (guidanceList.isNotEmpty()) {
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Actionable Steps",
+                                tint = Color(0xFF2E7D32),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Actionable Steps for ASHA Worker",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1B5E20)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Recommended community actions based on current clinical severity and trajectory:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF33691E)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        guidanceList.forEach { action ->
+                            val isCritical = action.startsWith("🚨") || action.contains("CRITICAL")
+                            val isWarning = action.startsWith("⚠️") || action.contains("WORSENING")
+                            val cardBg = when {
+                                isCritical -> Color(0xFFFFEBEE)
+                                isWarning -> Color(0xFFFFF3E0)
+                                else -> Color.White
+                            }
+                            val borderClr = when {
+                                isCritical -> Color(0xFFEF9A9A)
+                                isWarning -> Color(0xFFFFCC80)
+                                else -> Color(0xFFC8E6C9)
+                            }
+                            val textClr = when {
+                                isCritical -> Color(0xFFB71C1C)
+                                isWarning -> Color(0xFFE65100)
+                                else -> Color(0xFF2E7D32)
+                            }
+
+                            Card(
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = cardBg),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, borderClr),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Text(
+                                        text = if (isCritical) "🚨" else if (isWarning) "⚠️" else "✓",
+                                        fontWeight = FontWeight.Bold,
+                                        color = textClr,
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    )
+                                    Text(
+                                        text = action.removePrefix("🚨 ").removePrefix("⚠️ ").removePrefix("• "),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = if (isCritical || isWarning) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = Color(0xFF263238),
+                                        lineHeight = 18.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+
+            // ── SECTION 6: SCIENTIFIC TRANSPARENCY DISCLAIMER ─────────────────────────
             Card(
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFECEFF1)),

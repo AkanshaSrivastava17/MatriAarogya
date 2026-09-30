@@ -38,11 +38,15 @@ def test_existing_predict_endpoint_still_works():
 
     client = TestClient(main.app)
 
-    r = client.post("/predict", json={"Age": 28, "BMI": 24.0})
+    r = client.post("/predict", json={"Age": 28, "BMI": 24.0, "Systolic_BP": 145.0, "Diastolic": 92.0})
     assert r.status_code == 200
     body = r.json()
     assert "prediction" in body
     assert "prediction_label" in body
+    assert "contributing_factors" in body
+    assert "actionable_guidance" in body
+    assert len(body["contributing_factors"][0]) > 0
+    assert len(body["actionable_guidance"][0]) > 0
 
 
 def test_existing_root_endpoint_still_works():

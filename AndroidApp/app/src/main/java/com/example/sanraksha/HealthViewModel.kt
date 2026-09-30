@@ -10,7 +10,9 @@ import kotlinx.coroutines.launch
 
 data class ApiPredictionResult(
     val prediction: Int,
-    val label: String
+    val label: String,
+    val contributingFactors: List<String> = emptyList(),
+    val actionableGuidance: List<String> = emptyList()
 )
 
 class HealthViewModel : ViewModel() {
@@ -31,8 +33,17 @@ class HealthViewModel : ViewModel() {
                                 1 -> "High Risk"
                                 else -> "Unknown"
                             }
-                        Log.d("API_SUCCESS", "Prediction: $prediction, Label: $label")
-                        onResult(ApiPredictionResult(prediction = prediction, label = label))
+                        val factors = body.contributing_factors?.firstOrNull() ?: emptyList()
+                        val actions = body.actionable_guidance?.firstOrNull() ?: emptyList()
+                        Log.d("API_SUCCESS", "Prediction: $prediction, Label: $label, Factors: $factors, Actions: $actions")
+                        onResult(
+                            ApiPredictionResult(
+                                prediction = prediction,
+                                label = label,
+                                contributingFactors = factors,
+                                actionableGuidance = actions
+                            )
+                        )
                     } else {
                         onResult(null)
                     }
@@ -133,8 +144,9 @@ class HealthViewModel : ViewModel() {
                         val safetyMsg = latest["safety_message"] as? String ?: ""
                         val prob = (latest["risk_probability"] as? Number)?.toFloat() ?: 0f
                         val cat = latest["risk_category"] as? String ?: "Low"
-                        val factors = (latest["top_contributing_factors"] as? List<String>) ?: emptyList()
+                        val factors = (latest["top_contributing_factors"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
                         val expl = latest["explanation_text"] as? String ?: ""
+                        val guidance = (latest["actionable_guidance"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
                         val trend = latest["trend"] as? String ?: "stable"
                         val visitCount = (latest["visit_count"] as? Number)?.toInt() ?: 1
                         val scoreChange = (latest["score_change"] as? Number)?.toInt()
@@ -175,7 +187,8 @@ class HealthViewModel : ViewModel() {
                                 reason = "Cross-sectional data limits prospective predictions."
                             ),
                             safetyFlag = safetyFlag,
-                            urgentMessage = if (safetyFlag) safetyMsg else null
+                            urgentMessage = if (safetyFlag) safetyMsg else null,
+                            actionableGuidance = guidance
                         )
                     }
                 }

@@ -19,7 +19,7 @@ from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Query
 
-from . import screening, context_model, longitudinal, store, trimester as trimester_mod
+from . import screening, context_model, longitudinal, store, trimester as trimester_mod, guidance
 from .future_model import future_risk_evaluator
 from .schemas import (
     CreatePatientRequest,
@@ -146,7 +146,15 @@ def create_visit(patient_id: int, req: CreateVisitRequest):
         current_context=req.context.values if req.context else None,
     )
 
-    # 6. Append-Only Persistence (Historical Visits Never Overwritten)
+    # 6. Actionable Guidance for Frontline ASHA Workers
+    actionable_guidance = guidance.generate_mental_health_actionable_guidance(
+        screening_result=screening_result,
+        context_result=context_result,
+        longitudinal_result=longitudinal_result,
+        context_inputs=req.context.values if req.context else None,
+    )
+
+    # 7. Append-Only Persistence (Historical Visits Never Overwritten)
     visit_id = store.save_visit(
         patient_id=patient_id,
         visit_date=req.visit_date,
@@ -168,7 +176,7 @@ def create_visit(patient_id: int, req: CreateVisitRequest):
         f"urgent_safety_flag={screening_result['urgent_safety_flag']} trend={longitudinal_result['trend']}"
     )
 
-    # 7. Formatted Structured Response Matching Section 9 Specification
+    # 8. Formatted Structured Response Matching Section 9 Specification
     return {
         "patient_id": patient_id,
         "visit_id": visit_id,
@@ -217,6 +225,7 @@ def create_visit(patient_id: int, req: CreateVisitRequest):
         # Safety surfaced directly at top-level so it cannot be missed or suppressed
         "safety_flag": screening_result["urgent_safety_flag"],
         "urgent_message": screening_result.get("urgent_message"),
+        "actionable_guidance": actionable_guidance,
     }
 
 
@@ -225,6 +234,13 @@ def get_history(patient_id: int):
     history = store.get_patient_history(patient_id)
     if not history:
         raise HTTPException(status_code=404, detail="No visits found for this patient_id")
+    for v in history:
+        v["actionable_guidance"] = guidance.generate_mental_health_actionable_guidance(
+            screening_result={"total_score": v.get("total_score", 0), "severity": v.get("severity", ""), "urgent_safety_flag": bool(v.get("urgent_safety_flag", False))},
+            context_result={"risk_category": v.get("risk_category", "Low"), "risk_probability": v.get("risk_probability", 0.0)},
+            longitudinal_result={"trend": v.get("trend", "stable"), "score_change": v.get("score_change")},
+            context_inputs=None
+        )
     return {"patient_id": patient_id, "visits": history}
 
 
@@ -233,6 +249,12 @@ def get_latest(patient_id: int):
     latest = store.get_latest_visit(patient_id)
     if not latest:
         raise HTTPException(status_code=404, detail="No assessments found for this patient_id")
+    latest["actionable_guidance"] = guidance.generate_mental_health_actionable_guidance(
+        screening_result={"total_score": latest.get("total_score", 0), "severity": latest.get("severity", ""), "urgent_safety_flag": bool(latest.get("urgent_safety_flag", False))},
+        context_result={"risk_category": latest.get("risk_category", "Low"), "risk_probability": latest.get("risk_probability", 0.0)},
+        longitudinal_result={"trend": latest.get("trend", "stable"), "score_change": latest.get("score_change")},
+        context_inputs=None
+    )
     return {"patient_id": patient_id, "latest_visit": latest}
 
 

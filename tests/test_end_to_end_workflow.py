@@ -133,6 +133,11 @@ def test_end_to_end_longitudinal_visit_progression():
     assert v1_data["postpartum_prediction"]["available"] is False
     assert "cross-sectional" in v1_data["postpartum_prediction"]["reason"].lower()
 
+    # Actionable Guidance for ASHA workers
+    assert "actionable_guidance" in v1_data
+    assert isinstance(v1_data["actionable_guidance"], list)
+    assert len(v1_data["actionable_guidance"]) > 0
+
     # ── VISIT 2 (Prenatal, Week 24, Second trimester, Elevated PHQ-9) ───────────────
     v2_scores = _make_phq9(suicide_val=0, default_val=1)
     v2_scores["phq_depressed_mood"] = 3

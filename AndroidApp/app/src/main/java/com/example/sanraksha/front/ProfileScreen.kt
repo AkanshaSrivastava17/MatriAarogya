@@ -40,7 +40,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.filled.Warning
+import com.example.sanraksha.PhysicalVitalsGuidance
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ComposeCompilerApi
 import androidx.compose.runtime.collectAsState
@@ -173,33 +176,103 @@ fun ProfileScreen(patientId:Long,
                     } else {
                         "Low Risk"
                     }
-                    val riskColor = if (latestRisk == 1) Color.Red else Color(0xFF4CAF50)
+                    val isHighRisk = latestRisk == 1
+                    val riskColor = if (isHighRisk) Color(0xFFC62828) else Color(0xFF2E7D32)
+
+                    val (factors, actions) = PhysicalVitalsGuidance.evaluateFactorsAndActions(
+                        sys = latestVitals.Systolic_BP,
+                        dia = latestVitals.Diastolic,
+                        bs = latestVitals.BS,
+                        bmi = latestVitals.BMI,
+                        prevComp = latestVitals.Previous_Complications,
+                        preDiabetes = latestVitals.Preexisting_Diabetes,
+                        gestDiabetes = latestVitals.Gestational_Diabetes,
+                        mentalHealth = latestVitals.Mental_Health,
+                        isHighRisk = isHighRisk
+                    )
+
+                    var showActions by remember { mutableStateOf(false) }
 
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        elevation = CardDefaults.cardElevation(4.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1))
+                        shape = RoundedCornerShape(14.dp),
+                        elevation = CardDefaults.cardElevation(3.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isHighRisk) Color(0xFFFFEBEE) else Color(0xFFF1F8E9)
+                        )
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Favorite,
-                                contentDescription = null,
-                                tint = riskColor,
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                            Text(
-                                text = "Recent Risk Prediction: $riskText",
-                                color = riskColor,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isHighRisk) Icons.Default.Warning else Icons.Default.Favorite,
+                                        contentDescription = null,
+                                        tint = riskColor,
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    )
+                                    Column {
+                                        Text(
+                                            text = "Physical Vitals: $riskText",
+                                            color = riskColor,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (factors.isNotEmpty()) {
+                                            Text(
+                                                text = factors.first(),
+                                                fontSize = 12.sp,
+                                                color = Color(0xFF455A64)
+                                            )
+                                        }
+                                    }
+                                }
+                                TextButton(onClick = { showActions = !showActions }) {
+                                    Text(
+                                        text = if (showActions) "Hide ▲" else "ASHA Steps ▼",
+                                        color = riskColor,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+
+                            if (showActions) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Divider(color = Color(0xFFE0E0E0))
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                    text = "Actionable Steps for ASHA Worker:",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = if (isHighRisk) Color(0xFFC62828) else Color(0xFF1B5E20)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                actions.forEach { action ->
+                                    val isCritical = action.startsWith("🚨")
+                                    val isWarning = action.startsWith("⚠️")
+                                    Text(
+                                        text = action,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isCritical || isWarning) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = when {
+                                            isCritical -> Color(0xFFB71C1C)
+                                            isWarning -> Color(0xFFE65100)
+                                            else -> Color(0xFF2E7D32)
+                                        },
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

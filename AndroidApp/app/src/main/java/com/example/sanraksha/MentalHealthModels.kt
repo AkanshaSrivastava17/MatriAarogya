@@ -79,7 +79,8 @@ data class MentalHealthAssessmentResponse(
     @SerializedName("longitudinal") val longitudinal: LongitudinalDto,
     @SerializedName("postpartum_prediction") val postpartumPrediction: PostpartumPredictionDto,
     @SerializedName("safety_flag") val safetyFlag: Boolean = false,
-    @SerializedName("urgent_message") val urgentMessage: String? = null
+    @SerializedName("urgent_message") val urgentMessage: String? = null,
+    @SerializedName("actionable_guidance") val actionableGuidance: List<String> = emptyList()
 )
 
 data class PatientHistoryVisitItem(
@@ -99,7 +100,8 @@ data class PatientHistoryVisitItem(
     @SerializedName("score_change") val scoreChange: Int?,
     @SerializedName("systolic_bp") val systolicBp: Float?,
     @SerializedName("diastolic_bp") val diastolicBp: Float?,
-    @SerializedName("heart_rate") val heartRate: Float?
+    @SerializedName("heart_rate") val heartRate: Float?,
+    @SerializedName("actionable_guidance") val actionableGuidance: List<String> = emptyList()
 )
 
 data class PatientHistoryResponse(

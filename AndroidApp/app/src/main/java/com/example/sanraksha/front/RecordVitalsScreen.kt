@@ -47,7 +47,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.Color
+import com.example.sanraksha.PhysicalVitalsGuidance
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -119,6 +126,12 @@ fun RecordVitalsScreen(
     var preexistingDiabetes by remember { mutableStateOf<Int?>(null) }
     var gestationalDiabetes by remember { mutableStateOf<Int?>(null) }
     var mentalHealth by remember { mutableStateOf<Int?>(null) }
+
+    var showResultDialog by remember { mutableStateOf(false) }
+    var dialogRiskLabel by remember { mutableStateOf("Low Risk") }
+    var dialogIsHighRisk by remember { mutableStateOf(false) }
+    var dialogFactors by remember { mutableStateOf<List<String>>(emptyList()) }
+    var dialogActions by remember { mutableStateOf<List<String>>(emptyList()) }
 
 
     val calendar = Calendar.getInstance()
@@ -361,7 +374,6 @@ fun RecordVitalsScreen(
                                 Log.d("InsertVitals", "Vitals Object = $vitals")
                                 vitalsViewModel.insertVitals(vitals)
 
-
                                 val week = getWeek(startDateStr = patient?.lastCheckup?:"", endDateStr = date)
                                 val finalweek = (patient?.pregnancyWeek?:0) + week
 
@@ -369,7 +381,23 @@ fun RecordVitalsScreen(
                                     finalweek,date
                                     ))
 
-                                 navController.popBackStack()
+                                val isHigh = result.prediction == 1
+                                val (evalFactors, evalActions) = PhysicalVitalsGuidance.evaluateFactorsAndActions(
+                                    sys = systolicBP.toFloatOrNull(),
+                                    dia = diastolic.toFloatOrNull(),
+                                    bs = bs.toFloatOrNull(),
+                                    bmi = bmi.toFloatOrNull(),
+                                    prevComp = previousComplications ?: 0,
+                                    preDiabetes = preexistingDiabetes ?: 0,
+                                    gestDiabetes = gestationalDiabetes ?: 0,
+                                    mentalHealth = mentalHealth ?: 0,
+                                    isHighRisk = isHigh
+                                )
+                                dialogRiskLabel = result.label
+                                dialogIsHighRisk = isHigh
+                                dialogFactors = if (result.contributingFactors.isNotEmpty()) result.contributingFactors else evalFactors
+                                dialogActions = if (result.actionableGuidance.isNotEmpty()) result.actionableGuidance else evalActions
+                                showResultDialog = true
 
                             }else{
                                Log.d("APIPrediction","error: ")
@@ -424,7 +452,7 @@ fun RecordVitalsScreen(
                             predictedRiskLabel = if (intPrediction == 1) "High Risk" else "Low Risk",
                         )
 
-                          vitalsViewModel.insertVitals(vitals)
+                        vitalsViewModel.insertVitals(vitals)
 
                         val week = getWeek(startDateStr = patient?.lastCheckup?:"", endDateStr = date)
                         val finalweek = (patient?.pregnancyWeek?:0) + week
@@ -433,7 +461,23 @@ fun RecordVitalsScreen(
                             finalweek,date
                         ))
 
-                          navController.popBackStack()
+                        val isHigh = intPrediction == 1
+                        val (evalFactors, evalActions) = PhysicalVitalsGuidance.evaluateFactorsAndActions(
+                            sys = systolicBP.toFloatOrNull(),
+                            dia = diastolic.toFloatOrNull(),
+                            bs = bs.toFloatOrNull(),
+                            bmi = bmi.toFloatOrNull(),
+                            prevComp = previousComplications ?: 0,
+                            preDiabetes = preexistingDiabetes ?: 0,
+                            gestDiabetes = gestationalDiabetes ?: 0,
+                            mentalHealth = mentalHealth ?: 0,
+                            isHighRisk = isHigh
+                        )
+                        dialogRiskLabel = if (isHigh) "High Risk" else "Low Risk"
+                        dialogIsHighRisk = isHigh
+                        dialogFactors = evalFactors
+                        dialogActions = evalActions
+                        showResultDialog = true
                     }
 
 
@@ -446,6 +490,132 @@ fun RecordVitalsScreen(
                 Text("Save & Predict Risk",style = MaterialTheme.typography.labelLarge)
             }
         }
+    }
+
+    if (showResultDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showResultDialog = false
+                navController.popBackStack()
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showResultDialog = false
+                        navController.popBackStack()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (dialogIsHighRisk) Color(0xFFC62828) else Color(0xFF2E7D32)
+                    )
+                ) {
+                    Text("Acknowledge & Return to Patient", fontWeight = FontWeight.Bold)
+                }
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (dialogIsHighRisk) Icons.Default.Warning else Icons.Default.Favorite,
+                        contentDescription = null,
+                        tint = if (dialogIsHighRisk) Color(0xFFC62828) else Color(0xFF2E7D32),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Vitals Risk Assessment",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (dialogIsHighRisk) Color(0xFFFFCDD2) else Color(0xFFE8F5E9),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Diagnosed Status: $dialogRiskLabel",
+                            modifier = Modifier.padding(10.dp),
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 15.sp,
+                            color = if (dialogIsHighRisk) Color(0xFFB71C1C) else Color(0xFF1B5E20)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "Major Contributing Factors:",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (dialogFactors.isEmpty()) {
+                        Text(
+                            text = "• All recorded vitals within standard clinical thresholds.",
+                            fontSize = 13.sp,
+                            color = Color(0xFF455A64)
+                        )
+                    } else {
+                        dialogFactors.forEach { factor ->
+                            Text(
+                                text = "• $factor",
+                                fontSize = 13.sp,
+                                color = Color(0xFF37474F),
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "Actionable Steps for ASHA Worker:",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = if (dialogIsHighRisk) Color(0xFFC62828) else Color(0xFF2E7D32)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    dialogActions.forEach { action ->
+                        val isCritical = action.startsWith("🚨")
+                        val isWarning = action.startsWith("⚠️")
+                        Card(
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = when {
+                                    isCritical -> Color(0xFFFFEBEE)
+                                    isWarning -> Color(0xFFFFF3E0)
+                                    else -> Color(0xFFF1F8E9)
+                                }
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = action,
+                                modifier = Modifier.padding(8.dp),
+                                fontSize = 12.sp,
+                                fontWeight = if (isCritical || isWarning) FontWeight.SemiBold else FontWeight.Normal,
+                                color = when {
+                                    isCritical -> Color(0xFFB71C1C)
+                                    isWarning -> Color(0xFFE65100)
+                                    else -> Color(0xFF1B5E20)
+                                }
+                            )
+                        }
+                    }
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 }
 
