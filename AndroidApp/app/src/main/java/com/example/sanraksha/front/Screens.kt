@@ -21,4 +21,16 @@ sealed class Screens(val route: String) {
     object PatientHistory : Screens("patient_history/{patientId}") {
         fun passId(patientId: Long): String = "patient_history/$patientId"
     }
+    object NutritionAssessment : Screens("nutrition_assessment/{patientId}") {
+        fun passId(patientId: Long): String = "nutrition_assessment/$patientId"
+    }
+    object ImmunizationTracking : Screens("immunization_tracking/{patientId}") {
+        fun passId(patientId: Long): String = "immunization_tracking/$patientId"
+    }
+    object ActionPlan : Screens("action_plan/{patientId}") {
+        fun passId(patientId: Long): String = "action_plan/$patientId"
+    }
+    object ComprehensiveSummary : Screens("comprehensive_summary/{patientId}") {
+        fun passId(patientId: Long): String = "comprehensive_summary/$patientId"
+    }
 }

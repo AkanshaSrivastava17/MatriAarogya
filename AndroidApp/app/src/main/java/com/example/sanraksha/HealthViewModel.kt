@@ -203,4 +203,158 @@ class HealthViewModel : ViewModel() {
     fun clearError() {
         _errorMessage.value = null
     }
+
+    // ── NUTRITION STATE MANAGEMENT ───────────────────────────────────────────
+    private val _latestNutrition = MutableStateFlow<NutritionEvaluationDto?>(null)
+    val latestNutrition: StateFlow<NutritionEvaluationDto?> = _latestNutrition.asStateFlow()
+
+    fun submitNutritionAssessment(
+        request: CreateNutritionAssessmentDto,
+        onComplete: (NutritionEvaluationDto?) -> Unit
+    ) {
+        _isLoading.value = true
+        _errorMessage.value = null
+        viewModelScope.launch {
+            try {
+                val response = retrofitInstance.api.submitNutritionAssessment(request)
+                if (response.isSuccessful && response.body() != null) {
+                    val result = response.body()!!
+                    _latestNutrition.value = result
+                    Log.d("NUTR_SUCCESS", "Assessment saved: ${result.assessmentId}, gaps: ${result.gaps.size}")
+                    onComplete(result)
+                } else {
+                    val err = response.errorBody()?.string() ?: "Nutrition submission failed"
+                    Log.e("NUTR_ERR", err)
+                    _errorMessage.value = err
+                    onComplete(null)
+                }
+            } catch (e: Exception) {
+                Log.e("NUTR_EXC", "Error submitting nutrition assessment: ${e.message}", e)
+                _errorMessage.value = e.localizedMessage ?: "Network error submitting nutrition"
+                onComplete(null)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun fetchLatestNutrition(patientId: Long) {
+        _isLoading.value = true
+        viewModelScope.launch {
+            try {
+                val response = retrofitInstance.api.getLatestNutrition(patientId)
+                if (response.isSuccessful && response.body() != null) {
+                    _latestNutrition.value = response.body()
+                }
+            } catch (e: Exception) {
+                Log.e("NUTR_FETCH", "Error fetching nutrition: ${e.message}", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // ── IMMUNIZATION STATE MANAGEMENT ────────────────────────────────────────
+    private val _immunizationStatus = MutableStateFlow<PatientImmunizationStatusDto?>(null)
+    val immunizationStatus: StateFlow<PatientImmunizationStatusDto?> = _immunizationStatus.asStateFlow()
+
+    fun recordVaccination(
+        request: CreateImmunizationRecordDto,
+        onComplete: (Boolean) -> Unit
+    ) {
+        _isLoading.value = true
+        _errorMessage.value = null
+        viewModelScope.launch {
+            try {
+                val response = retrofitInstance.api.recordVaccination(request)
+                if (response.isSuccessful) {
+                    fetchImmunizationStatus(request.patientId)
+                    onComplete(true)
+                } else {
+                    val err = response.errorBody()?.string() ?: "Failed to record vaccine"
+                    _errorMessage.value = err
+                    onComplete(false)
+                }
+            } catch (e: Exception) {
+                Log.e("IMM_REC", "Error recording vaccine: ${e.message}", e)
+                _errorMessage.value = e.localizedMessage ?: "Network error recording vaccine"
+                onComplete(false)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun fetchImmunizationStatus(patientId: Long) {
+        _isLoading.value = true
+        viewModelScope.launch {
+            try {
+                val response = retrofitInstance.api.getImmunizationStatus(patientId)
+                if (response.isSuccessful && response.body() != null) {
+                    _immunizationStatus.value = response.body()
+                }
+            } catch (e: Exception) {
+                Log.e("IMM_FETCH", "Error fetching immunization status: ${e.message}", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // ── ACTION GUIDANCE & TASK TRACKING ──────────────────────────────────────
+    private val _actionPlan = MutableStateFlow<UnifiedActionPlanDto?>(null)
+    val actionPlan: StateFlow<UnifiedActionPlanDto?> = _actionPlan.asStateFlow()
+
+    fun fetchActionPlan(patientId: Long) {
+        _isLoading.value = true
+        viewModelScope.launch {
+            try {
+                val response = retrofitInstance.api.getActionPlan(patientId)
+                if (response.isSuccessful && response.body() != null) {
+                    _actionPlan.value = response.body()
+                }
+            } catch (e: Exception) {
+                Log.e("ACTION_FETCH", "Error fetching action plan: ${e.message}", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun updateActionStatus(actionId: String, status: String, notes: String?, patientId: Long) {
+        viewModelScope.launch {
+            try {
+                val response = retrofitInstance.api.updateActionStatus(actionId, UpdateActionStatusDto(status, notes))
+                if (response.isSuccessful) {
+                    fetchActionPlan(patientId)
+                }
+            } catch (e: Exception) {
+                Log.e("ACTION_UPDATE", "Error updating action: ${e.message}", e)
+            }
+        }
+    }
+
+    // ── COMPREHENSIVE SUMMARY ────────────────────────────────────────────────
+    private val _comprehensiveSummary = MutableStateFlow<ComprehensiveMaternalHealthSummaryDto?>(null)
+    val comprehensiveSummary: StateFlow<ComprehensiveMaternalHealthSummaryDto?> = _comprehensiveSummary.asStateFlow()
+
+    fun fetchComprehensiveSummary(patientId: Long) {
+        _isLoading.value = true
+        _errorMessage.value = null
+        viewModelScope.launch {
+            try {
+                val response = retrofitInstance.api.getComprehensiveSummary(patientId)
+                if (response.isSuccessful && response.body() != null) {
+                    _comprehensiveSummary.value = response.body()
+                } else {
+                    _errorMessage.value = response.errorBody()?.string() ?: "Failed to load summary"
+                }
+            } catch (e: Exception) {
+                Log.e("SUMMARY_FETCH", "Error fetching summary: ${e.message}", e)
+                _errorMessage.value = e.localizedMessage ?: "Network error loading summary"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
 }

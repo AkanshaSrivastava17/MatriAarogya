@@ -49,10 +49,23 @@ class PatientParams(BaseModel):
     state: str = None
 
 
-app = FastAPI()
+app = FastAPI(title="SanRaksha Maternal Health Intelligence API", version="2.0.0")
 
 from app.mental_health.router import router as mental_health_router
+from app.nutrition.router import router as nutrition_router
+from app.immunization.router import router as immunization_router
+from app.explainability.router import router as explainability_router
+from app.guidance.router import router as guidance_router
+from app.analytics.router import router as analytics_router
+from app.summary.router import router as summary_router
+
 app.include_router(mental_health_router)
+app.include_router(nutrition_router)
+app.include_router(immunization_router)
+app.include_router(explainability_router)
+app.include_router(guidance_router)
+app.include_router(analytics_router)
+app.include_router(summary_router)
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
@@ -188,6 +201,7 @@ async def predict(data: Union[PatientParams, List[PatientParams]]):
     prediction_labels = []
     all_contributing_factors = []
     all_actionable_guidance = []
+    all_shap_explanations = []
 
     for item in data:
         # Create feature vector with 10 features (Body Temp removed)
@@ -212,11 +226,20 @@ async def predict(data: Union[PatientParams, List[PatientParams]]):
         features_scaled = scaler.transform(features_array)
 
         # Get prediction from improved Keras model
-        prob = keras_model.predict(features_scaled, verbose=0)[0, 0]
+        prob = float(keras_model.predict(features_scaled, verbose=0)[0, 0])
         pred = 1 if prob > 0.5 else 0
         label = RISK_LABELS.get(pred, "Unknown")
 
         factors, actions = explain_physical_vitals_risk(item, pred, label)
+
+        # Compute genuine instance-level SHAP explanation
+        try:
+            from app.explainability.shap_service import explain_physical_vitals_prediction
+            payload = item.model_dump() if hasattr(item, "model_dump") else item.dict()
+            shap_res = explain_physical_vitals_prediction(payload, pred, prob)
+            all_shap_explanations.append(shap_res.model_dump())
+        except Exception as e:
+            all_shap_explanations.append(None)
 
         append_captured_vitals(item, pred, label)
 
@@ -230,6 +253,7 @@ async def predict(data: Union[PatientParams, List[PatientParams]]):
         "prediction_label": prediction_labels,
         "contributing_factors": all_contributing_factors,
         "actionable_guidance": all_actionable_guidance,
+        "shap_explanations": all_shap_explanations,
     }
 
 

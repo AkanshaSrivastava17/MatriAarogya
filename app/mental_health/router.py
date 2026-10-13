@@ -108,9 +108,17 @@ def create_visit(patient_id: int, req: CreateVisitRequest):
 
     # 2. Contextual ML Risk Assessment (Task B)
     context_result = None
+    context_shap_result = None
     if req.context is not None:
         try:
             context_result = context_model.predict_context_risk(req.context.values, req.context.age)
+            try:
+                from app.explainability.shap_service import explain_contextual_mental_health_prediction
+                context_shap_result = explain_contextual_mental_health_prediction(
+                    req.context.values, req.context.age, context_result["risk_probability"]
+                )
+            except Exception:
+                context_shap_result = None
         except ValueError as e:
             raise HTTPException(status_code=422, detail=f"Invalid context fields: {e}")
 
@@ -203,6 +211,7 @@ def create_visit(patient_id: int, req: CreateVisitRequest):
             "risk_category": context_result["risk_category"],        # Backwards-compatible
             "top_contributing_factors": context_result["top_contributing_factors"],
             "explanation": context_result["explanation"],
+            "shap_explanation": context_shap_result.model_dump() if context_shap_result else None,
         } if context_result else None,
         "longitudinal": {
             "previous_phq9": longitudinal_result["previous_phq9"],

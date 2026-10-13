@@ -391,6 +391,46 @@ fun ProfileScreen(patientId:Long,
                 ) {
                     Text("📈 Longitudinal Trajectory & History")
                 }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = { navController.navigate(Screens.NutritionAssessment.passId(patientId)) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("🥗 Maternal Diet & Nutrition (ICMR-NIN)")
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = { navController.navigate(Screens.ImmunizationTracking.passId(patientId)) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D47A1)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("💉 Maternal Immunization Tracker (Td UIP)")
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = { navController.navigate(Screens.ActionPlan.passId(patientId)) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("📋 Prioritized ASHA Action Plan")
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = { navController.navigate(Screens.ComprehensiveSummary.passId(patientId)) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4A148C)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("📄 Comprehensive Health Dossier")
+                }
             }
         }
     }

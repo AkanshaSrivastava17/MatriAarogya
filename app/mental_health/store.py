@@ -91,6 +91,90 @@ CREATE TABLE IF NOT EXISTS longitudinal_features (
     trend                           TEXT NOT NULL,
     features_json                   TEXT
 );
+
+CREATE TABLE IF NOT EXISTS nutrition_assessment (
+    assessment_id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id               INTEGER NOT NULL REFERENCES patient(patient_id),
+    visit_id                 INTEGER REFERENCES visit(visit_id),
+    assessment_date          TEXT NOT NULL,
+    gestational_age          INTEGER,
+    trimester                TEXT,
+    height_cm                REAL,
+    current_weight_kg        REAL,
+    pre_pregnancy_weight_kg  REAL,
+    current_bmi              REAL,
+    pre_pregnancy_bmi        REAL,
+    energy_kcal              REAL,
+    carbohydrates_g          REAL,
+    protein_g                REAL,
+    fat_g                    REAL,
+    fibre_g                  REAL,
+    iron_mg                  REAL,
+    folate_mcg               REAL,
+    calcium_mg               REAL,
+    vitamin_d_iu             REAL,
+    vitamin_b12_mcg          REAL,
+    dietary_pattern          TEXT,
+    food_restrictions        TEXT,
+    appetite_difficulty      TEXT,
+    food_insecurity          INTEGER DEFAULT 0,
+    supplements_taken        TEXT,
+    assessment_completeness  TEXT,
+    gaps_json                TEXT,
+    recommendations_json     TEXT,
+    notes                    TEXT,
+    created_at               TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS immunization_record (
+    record_id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id               INTEGER NOT NULL REFERENCES patient(patient_id),
+    visit_id                 INTEGER REFERENCES visit(visit_id),
+    vaccine_name             TEXT NOT NULL,
+    dose_number              INTEGER NOT NULL,
+    status                   TEXT NOT NULL,
+    administration_date      TEXT,
+    confirmation_source      TEXT,
+    card_verified            INTEGER DEFAULT 0,
+    next_due_date            TEXT,
+    notes                    TEXT,
+    recorded_at              TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS action_recommendation (
+    action_id                TEXT PRIMARY KEY,
+    patient_id               INTEGER NOT NULL REFERENCES patient(patient_id),
+    visit_id                 INTEGER REFERENCES visit(visit_id),
+    domain                   TEXT NOT NULL,
+    trigger_observation      TEXT NOT NULL,
+    explanation              TEXT NOT NULL,
+    action_text              TEXT NOT NULL,
+    urgency                  TEXT NOT NULL,
+    responsible_person       TEXT NOT NULL,
+    timeframe                TEXT NOT NULL,
+    referral_required        INTEGER DEFAULT 0,
+    status                   TEXT NOT NULL DEFAULT 'pending',
+    outcome_notes            TEXT,
+    completed_at             TEXT,
+    rule_source              TEXT NOT NULL,
+    rule_version             TEXT NOT NULL,
+    created_at               TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS prediction_explanation (
+    explanation_id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id               INTEGER NOT NULL REFERENCES patient(patient_id),
+    visit_id                 INTEGER REFERENCES visit(visit_id),
+    model_name               TEXT NOT NULL,
+    model_version            TEXT NOT NULL,
+    prediction_class         TEXT NOT NULL,
+    prediction_score         REAL,
+    base_value               REAL,
+    shap_values_json         TEXT NOT NULL,
+    top_features_json        TEXT NOT NULL,
+    limitations_disclaimer   TEXT NOT NULL,
+    created_at               TEXT NOT NULL
+);
 """
 
 
@@ -461,3 +545,280 @@ def get_patient_history(patient_id: int, db_path: Path = DB_PATH) -> List[Dict[s
 def get_latest_visit(patient_id: int, db_path: Path = DB_PATH) -> Optional[Dict[str, Any]]:
     history = get_patient_history(patient_id, db_path)
     return history[-1] if history else None
+
+
+# ── Nutrition Assessments ─────────────────────────────────────────────────────
+
+def save_nutrition_assessment(data: Dict[str, Any], db_path: Path = DB_PATH) -> int:
+    with _connect(db_path) as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO nutrition_assessment (
+                patient_id, visit_id, assessment_date, gestational_age, trimester,
+                height_cm, current_weight_kg, pre_pregnancy_weight_kg, current_bmi, pre_pregnancy_bmi,
+                energy_kcal, carbohydrates_g, protein_g, fat_g, fibre_g,
+                iron_mg, folate_mcg, calcium_mg, vitamin_d_iu, vitamin_b12_mcg,
+                dietary_pattern, food_restrictions, appetite_difficulty, food_insecurity,
+                supplements_taken, assessment_completeness, gaps_json, recommendations_json,
+                notes, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                data["patient_id"],
+                data.get("visit_id"),
+                data.get("assessment_date", datetime.now().date().isoformat()),
+                data.get("gestational_age"),
+                data.get("trimester"),
+                data.get("height_cm"),
+                data.get("current_weight_kg"),
+                data.get("pre_pregnancy_weight_kg"),
+                data.get("current_bmi"),
+                data.get("pre_pregnancy_bmi"),
+                data.get("energy_kcal"),
+                data.get("carbohydrates_g"),
+                data.get("protein_g"),
+                data.get("fat_g"),
+                data.get("fibre_g"),
+                data.get("iron_mg"),
+                data.get("folate_mcg"),
+                data.get("calcium_mg"),
+                data.get("vitamin_d_iu"),
+                data.get("vitamin_b12_mcg"),
+                data.get("dietary_pattern", "vegetarian"),
+                data.get("food_restrictions"),
+                data.get("appetite_difficulty", "normal"),
+                1 if data.get("food_insecurity") else 0,
+                json.dumps(data.get("supplements_taken", [])),
+                data.get("assessment_completeness", "partial"),
+                json.dumps(data.get("gaps", [])),
+                json.dumps(data.get("recommendations", [])),
+                data.get("notes"),
+                datetime.now().isoformat(),
+            )
+        )
+        return cur.lastrowid
+
+
+def get_nutrition_assessments(patient_id: int, db_path: Path = DB_PATH) -> List[Dict[str, Any]]:
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM nutrition_assessment
+            WHERE patient_id = ?
+            ORDER BY assessment_date ASC, assessment_id ASC
+            """,
+            (patient_id,)
+        ).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            if d.get("gaps_json"):
+                try: d["gaps"] = json.loads(d["gaps_json"])
+                except Exception: d["gaps"] = []
+            if d.get("recommendations_json"):
+                try: d["recommendations"] = json.loads(d["recommendations_json"])
+                except Exception: d["recommendations"] = []
+            if d.get("supplements_taken"):
+                try: d["supplements_taken"] = json.loads(d["supplements_taken"])
+                except Exception: d["supplements_taken"] = []
+            result.append(d)
+        return result
+
+
+def get_latest_nutrition_assessment(patient_id: int, db_path: Path = DB_PATH) -> Optional[Dict[str, Any]]:
+    assessments = get_nutrition_assessments(patient_id, db_path)
+    return assessments[-1] if assessments else None
+
+
+# ── Immunization Records ──────────────────────────────────────────────────────
+
+def save_immunization_record(data: Dict[str, Any], db_path: Path = DB_PATH) -> int:
+    with _connect(db_path) as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO immunization_record (
+                patient_id, visit_id, vaccine_name, dose_number, status,
+                administration_date, confirmation_source, card_verified, next_due_date,
+                notes, recorded_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                data["patient_id"],
+                data.get("visit_id"),
+                data["vaccine_name"],
+                data["dose_number"],
+                data["status"],
+                data.get("administration_date"),
+                data.get("confirmation_source", "mcp_card"),
+                1 if data.get("card_verified") else 0,
+                data.get("next_due_date"),
+                data.get("notes"),
+                datetime.now().isoformat(),
+            )
+        )
+        return cur.lastrowid
+
+
+def get_immunization_records(patient_id: int, db_path: Path = DB_PATH) -> List[Dict[str, Any]]:
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM immunization_record
+            WHERE patient_id = ?
+            ORDER BY dose_number ASC, record_id ASC
+            """,
+            (patient_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+# ── Action Recommendations ────────────────────────────────────────────────────
+
+def save_action_recommendation(data: Dict[str, Any], db_path: Path = DB_PATH) -> str:
+    with _connect(db_path) as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO action_recommendation (
+                action_id, patient_id, visit_id, domain, trigger_observation,
+                explanation, action_text, urgency, responsible_person, timeframe,
+                referral_required, status, outcome_notes, completed_at,
+                rule_source, rule_version, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                data["action_id"],
+                data["patient_id"],
+                data.get("visit_id"),
+                data["domain"],
+                data["trigger_observation"],
+                data["explanation"],
+                data["action_text"],
+                data["urgency"],
+                data["responsible_person"],
+                data["timeframe"],
+                1 if data.get("referral_required") else 0,
+                data.get("status", "pending"),
+                data.get("outcome_notes"),
+                data.get("completed_at"),
+                data.get("rule_source", "SanRaksha Clinical Protocol"),
+                data.get("rule_version", "v1.0"),
+                datetime.now().isoformat(),
+            )
+        )
+        return data["action_id"]
+
+
+def save_action_recommendations(actions: List[Dict[str, Any]], db_path: Path = DB_PATH) -> List[str]:
+    saved = []
+    for a in actions:
+        saved.append(save_action_recommendation(a, db_path))
+    return saved
+
+
+def get_action_recommendations(patient_id: int, status: Optional[str] = None, db_path: Path = DB_PATH) -> List[Dict[str, Any]]:
+    with _connect(db_path) as conn:
+        if status:
+            rows = conn.execute(
+                """
+                SELECT * FROM action_recommendation
+                WHERE patient_id = ? AND status = ?
+                ORDER BY CASE urgency
+                    WHEN 'emergency' THEN 1
+                    WHEN 'urgent' THEN 2
+                    WHEN 'timely' THEN 3
+                    WHEN 'routine' THEN 4
+                    ELSE 5 END ASC, created_at DESC
+                """,
+                (patient_id, status)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT * FROM action_recommendation
+                WHERE patient_id = ?
+                ORDER BY CASE urgency
+                    WHEN 'emergency' THEN 1
+                    WHEN 'urgent' THEN 2
+                    WHEN 'timely' THEN 3
+                    WHEN 'routine' THEN 4
+                    ELSE 5 END ASC, created_at DESC
+                """,
+                (patient_id,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def update_action_status(
+    action_id: str,
+    status: str,
+    outcome_notes: Optional[str] = None,
+    db_path: Path = DB_PATH
+) -> bool:
+    with _connect(db_path) as conn:
+        cur = conn.execute(
+            """
+            UPDATE action_recommendation
+            SET status = ?, outcome_notes = ?, completed_at = ?
+            WHERE action_id = ?
+            """,
+            (
+                status,
+                outcome_notes,
+                datetime.now().isoformat() if status in ["completed", "referred"] else None,
+                action_id,
+            )
+        )
+        return cur.rowcount > 0
+
+
+# ── Prediction Explanations ───────────────────────────────────────────────────
+
+def save_prediction_explanation(data: Dict[str, Any], db_path: Path = DB_PATH) -> int:
+    with _connect(db_path) as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO prediction_explanation (
+                patient_id, visit_id, model_name, model_version, prediction_class,
+                prediction_score, base_value, shap_values_json, top_features_json,
+                limitations_disclaimer, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                data["patient_id"],
+                data.get("visit_id"),
+                data["model_name"],
+                data["model_version"],
+                data["prediction_class"],
+                data.get("prediction_score"),
+                data.get("base_value"),
+                json.dumps(data.get("shap_values", {})),
+                json.dumps(data.get("top_features", [])),
+                data.get("limitations_disclaimer", ""),
+                datetime.now().isoformat(),
+            )
+        )
+        return cur.lastrowid
+
+
+def get_prediction_explanations(patient_id: int, db_path: Path = DB_PATH) -> List[Dict[str, Any]]:
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM prediction_explanation
+            WHERE patient_id = ?
+            ORDER BY created_at DESC
+            """,
+            (patient_id,)
+        ).fetchall()
+        results = []
+        for r in rows:
+            d = dict(r)
+            if d.get("shap_values_json"):
+                try: d["shap_values"] = json.loads(d["shap_values_json"])
+                except Exception: d["shap_values"] = {}
+            if d.get("top_features_json"):
+                try: d["top_features"] = json.loads(d["top_features_json"])
+                except Exception: d["top_features"] = []
+            results.append(d)
+        return results
+

@@ -31,4 +31,44 @@ interface healthApiService {
     suspend fun getLatestVisit(
         @Path("patient_id") patientId: Long
     ): Response<Map<String, Any>>
+
+    // ── NUTRITION ENDPOINTS ──────────────────────────────────────────────────
+    @POST("nutrition/assessments")
+    suspend fun submitNutritionAssessment(
+        @Body request: CreateNutritionAssessmentDto
+    ): Response<NutritionEvaluationDto>
+
+    @GET("nutrition/patients/{patient_id}/latest")
+    suspend fun getLatestNutrition(
+        @Path("patient_id") patientId: Long
+    ): Response<NutritionEvaluationDto>
+
+    // ── IMMUNIZATION ENDPOINTS ───────────────────────────────────────────────
+    @POST("immunization/records")
+    suspend fun recordVaccination(
+        @Body request: CreateImmunizationRecordDto
+    ): Response<Map<String, Any>>
+
+    @GET("immunization/patients/{patient_id}/status")
+    suspend fun getImmunizationStatus(
+        @Path("patient_id") patientId: Long
+    ): Response<PatientImmunizationStatusDto>
+
+    // ── ACTION GUIDANCE & TASK TRACKING ──────────────────────────────────────
+    @GET("guidance/patients/{patient_id}/actions")
+    suspend fun getActionPlan(
+        @Path("patient_id") patientId: Long
+    ): Response<UnifiedActionPlanDto>
+
+    @retrofit2.http.PUT("guidance/actions/{action_id}/status")
+    suspend fun updateActionStatus(
+        @Path("action_id") actionId: String,
+        @Body request: UpdateActionStatusDto
+    ): Response<Map<String, Any>>
+
+    // ── COMPREHENSIVE SUMMARY ────────────────────────────────────────────────
+    @GET("summary/patients/{patient_id}")
+    suspend fun getComprehensiveSummary(
+        @Path("patient_id") patientId: Long
+    ): Response<ComprehensiveMaternalHealthSummaryDto>
 }

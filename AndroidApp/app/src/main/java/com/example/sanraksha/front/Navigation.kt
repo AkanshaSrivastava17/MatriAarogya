@@ -134,5 +134,53 @@ fun Navigation(
                 healthViewModel = healthViewModel
             )
         }
+
+        composable(
+            route = Screens.NutritionAssessment.route,
+            arguments = listOf(navArgument("patientId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val patientId = backStackEntry.arguments?.getLong("patientId") ?: 0L
+            NutritionAssessmentScreen(
+                patientId = patientId,
+                navController = navController,
+                healthViewModel = healthViewModel
+            )
+        }
+
+        composable(
+            route = Screens.ImmunizationTracking.route,
+            arguments = listOf(navArgument("patientId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val patientId = backStackEntry.arguments?.getLong("patientId") ?: 0L
+            ImmunizationScreen(
+                patientId = patientId,
+                navController = navController,
+                healthViewModel = healthViewModel
+            )
+        }
+
+        composable(
+            route = Screens.ActionPlan.route,
+            arguments = listOf(navArgument("patientId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val patientId = backStackEntry.arguments?.getLong("patientId") ?: 0L
+            ActionPlanScreen(
+                patientId = patientId,
+                navController = navController,
+                healthViewModel = healthViewModel
+            )
+        }
+
+        composable(
+            route = Screens.ComprehensiveSummary.route,
+            arguments = listOf(navArgument("patientId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val patientId = backStackEntry.arguments?.getLong("patientId") ?: 0L
+            ComprehensiveSummaryScreen(
+                patientId = patientId,
+                navController = navController,
+                healthViewModel = healthViewModel
+            )
+        }
     }
 }
