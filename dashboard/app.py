@@ -1231,7 +1231,8 @@ def render_summary_tab(role: str, user: str):
         st.warning(f"Could not load comprehensive summary for patient #{sel_pid}.")
         return
 
-    overall_status = summary.get("overall_status", "LOW_RISK")
+    overall_status = summary.get("overall_health_status") or summary.get("overall_status", "LOW_RISK")
+    status_rationale = summary.get("overall_status_explanation") or summary.get("status_rationale", "Assessed across all domains.")
     badge_colors = {
         "CRITICAL_ALERT": ("#C53030", "#FFF5F5", "🚨 CRITICAL ALERT — IMMEDIATE CLINICAL ACTION REQUIRED"),
         "HIGH_VULNERABILITY": ("#DD6B20", "#FFFAF0", "⚠️ HIGH VULNERABILITY — URGENT MULTI-DOMAIN FOLLOW-UP"),
@@ -1246,7 +1247,7 @@ def render_summary_tab(role: str, user: str):
         <div style="background:{b_bg}; border:2px solid {b_color}; border-radius:12px; padding:18px; margin-bottom:16px;">
             <h3 style="margin:0; color:{b_color};">{b_text}</h3>
             <p style="margin:8px 0 0 0; font-size:14px; color:#2D3748;">
-                <b>Deterministic Synthesis Rationale:</b> {summary.get('status_rationale', 'Assessed across all domains.')}
+                <b>Deterministic Synthesis Rationale:</b> {status_rationale}
             </p>
         </div>
         """,
@@ -1350,7 +1351,14 @@ def render_summary_tab(role: str, user: str):
         )
 
     # Top Actions Checklist
-    top_actions = summary.get("top_actions", [])
+    raw_actions = summary.get("action_plan") or summary.get("top_actions") or []
+    if isinstance(raw_actions, dict):
+        top_actions = raw_actions.get("recommendations", [])
+    elif isinstance(raw_actions, list):
+        top_actions = raw_actions
+    else:
+        top_actions = []
+
     if top_actions:
         st.write("---")
         st.markdown("##### 📌 High-Priority Action Items")
