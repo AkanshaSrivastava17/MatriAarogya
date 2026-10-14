@@ -676,6 +676,20 @@ def get_immunization_records(patient_id: int, db_path: Path = DB_PATH) -> List[D
 
 def save_action_recommendation(data: Dict[str, Any], db_path: Path = DB_PATH) -> str:
     with _connect(db_path) as conn:
+        existing = conn.execute(
+            "SELECT status, outcome_notes, completed_at FROM action_recommendation WHERE action_id = ?",
+            (data["action_id"],)
+        ).fetchone()
+
+        status = data.get("status", "pending")
+        outcome_notes = data.get("outcome_notes")
+        completed_at = data.get("completed_at")
+
+        if existing and status == "pending" and existing["status"] in ["completed", "referred"]:
+            status = existing["status"]
+            outcome_notes = existing["outcome_notes"]
+            completed_at = existing["completed_at"]
+
         conn.execute(
             """
             INSERT OR REPLACE INTO action_recommendation (
@@ -697,9 +711,9 @@ def save_action_recommendation(data: Dict[str, Any], db_path: Path = DB_PATH) ->
                 data["responsible_person"],
                 data["timeframe"],
                 1 if data.get("referral_required") else 0,
-                data.get("status", "pending"),
-                data.get("outcome_notes"),
-                data.get("completed_at"),
+                status,
+                outcome_notes,
+                completed_at,
                 data.get("rule_source", "SanRaksha Clinical Protocol"),
                 data.get("rule_version", "v1.0"),
                 datetime.now().isoformat(),
