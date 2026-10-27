@@ -1,4 +1,4 @@
-# 🩺 SanRaksha: Maternal Health & Longitudinal Risk Assessment System
+# 🩺 MatriAarogya: Maternal/Mental Health & Longitudinal Risk Assessment System
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
